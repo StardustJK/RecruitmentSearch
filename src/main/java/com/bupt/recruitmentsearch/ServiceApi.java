@@ -88,7 +88,6 @@ public class ServiceApi {
                 return ResponseResult.FAILED("results.size()==0,搜索无结果");
 
             }
-            System.out.println("results num "+results.size());
 
             return ResponseResult.SUCCESS("搜索结果").setData(results);
 
