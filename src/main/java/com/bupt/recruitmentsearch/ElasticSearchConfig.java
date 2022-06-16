@@ -88,7 +88,9 @@ public class ElasticSearchConfig {
         String[] hostList = address.split(",");
         System.out.println("-----------hostList--------------"+hostList.length+"    "+ Arrays.toString(hostList));
         for (String addr : hostList) {
-            hostLists.add(new HttpHost(addr));
+            String host = addr.split(":")[0];
+            String port = addr.split(":")[1];
+            hostLists.add(new HttpHost(host, Integer.parseInt(port), schema));
         }
         // 转换成 HttpHost 数组
         HttpHost[] httpHost = hostLists.toArray(new HttpHost[]{});
