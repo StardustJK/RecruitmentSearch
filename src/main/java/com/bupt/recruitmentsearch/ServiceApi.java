@@ -31,11 +31,11 @@ public class ServiceApi {
                                  @RequestParam("page") int page,
                                  @RequestParam("size") int size
     ) throws IOException {
-        String searchIndex = "lagou";
+        String searchIndex = "job_info";
         //构建查询源构建器
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
 
-        searchSourceBuilder.query(QueryBuilders.multiMatchQuery(keyword, "pos_name", "enterprise", "pos_keyword", "main_tech"));
+        searchSourceBuilder.query(QueryBuilders.multiMatchQuery(keyword, "pos_name", "enterprise", "pos_keyword"));
         //分页
         if (size <= 0) {
             size = 20;
@@ -49,22 +49,22 @@ public class ServiceApi {
         searchSourceBuilder.from(index); //设置查询起始位置
         searchSourceBuilder.size(size); //结果集返回的数据条数
 
-        //字段筛选
-        String[] returnContext = {"pos_name",
-                "salary_low_bound",
-                "salary_high_bound",
-                "salary_fee_months",
-                "city",
-                "degree",
-                "exp",
-                "person_in_charge",
-                "charge_pos",
-                "enterprise",
-                "enterprise_scale",
-                "url"
-
-        };
-        searchSourceBuilder.fetchSource(returnContext, new String[]{});
+//        //字段筛选
+//        String[] returnContext = {"pos_name",
+//                "salary_low_bound",
+//                "salary_high_bound",
+//                "salary_fee_months",
+//                "city",
+//                "degree",
+//                "exp",
+//                "person_in_charge",
+//                "charge_pos",
+//                "enterprise",
+//                "enterprise_scale",
+//                "url"
+//
+//        };
+//        searchSourceBuilder.fetchSource(returnContext, new String[]{});
 
 
         //构建查询请求对象，入参为索引
