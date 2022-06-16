@@ -98,4 +98,9 @@ public class ServiceApi {
 
     }
 
+    @PostMapping("test")
+    public ResponseResult test(@RequestBody JSONObject input){
+        input.put("test","test");
+        return ResponseResult.SUCCESS("发送成功").setData(input);
+    }
 }

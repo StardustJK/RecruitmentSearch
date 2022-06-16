@@ -25,6 +25,7 @@ import java.util.List;
 @SpringBootTest
 class RecruitmentsearchApplicationTests {
 
+    /**
     @Test
     void contextLoads() {
     }
@@ -97,6 +98,7 @@ class RecruitmentsearchApplicationTests {
         }
 
     }
+    **/
 
 
 }
