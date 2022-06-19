@@ -194,7 +194,7 @@ public class ServiceApi {
         // 2. 构建查询请求对象，入参为索引
         SearchRequest searchRequest = new SearchRequest(searchIndex);
         // 设置获取真实的分页数量：
-        searchSourceBuilder.trackTotalHits(false);
+//        searchSourceBuilder.trackTotalHits(false);
         // 3. 向搜索请求对象中配置搜索源
         searchRequest.source(searchSourceBuilder);
         // 4. 执行搜索,向ES发起http请求
