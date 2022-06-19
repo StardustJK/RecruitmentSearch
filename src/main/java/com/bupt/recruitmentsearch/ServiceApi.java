@@ -28,6 +28,12 @@ public class ServiceApi {
     private static final String pageNo = "1";
     private static final String pageSize = "20";
 
+    // 将前端参数转换为es中的参数
+    private static final Map<String, String> keymapping = Map.of("posDomain", "pos_domain",
+            "enterScale", "enterprise_scale", "posSource", "pos_source");
+
+    // 如果是3k以下就填下限
+//    private static final String[] salaryVal = {"3k-5k", "5k-10k", "10k-20k", "20k-30k"};
 
     @Autowired
     RestHighLevelClient restHighLevelClient;
@@ -64,9 +70,12 @@ public class ServiceApi {
         if (salaryRegList.size() == 2) {
             salaryLow = Float.parseFloat(salaryRegList.get(0));
             salaryHigh = Float.parseFloat(salaryRegList.get(1));
-        } else if (salaryRegList.size() == 1) {
-            // 只有薪资下限
+        } else if (salaryRegList.size() == 1 && salaryStr.contains("以上")) {
+            // 30k以上
             salaryLow = Float.parseFloat(salaryRegList.get(0));
+        } else if (salaryRegList.size() == 1 && salaryStr.contains("以下")) {
+            // 3k以下
+            salaryHigh = Float.parseFloat(salaryRegList.get(0));
         } else {
             System.out.println("前端传入的预期薪资有误"); // 但是还需要进行其他的
         }
@@ -88,11 +97,6 @@ public class ServiceApi {
         BoolQueryBuilder multiBoolBuilder = QueryBuilders.boolQuery();
 
 
-        // 1.2 需要按照城市筛选
-        // 1.3 需要按照薪资筛选:如果只按照下限筛选，直接判断大于salaryLow(默认为0)
-        // 1.4 需要按照经验筛选
-        // 1.5 需要按照学历筛选
-
         // 筛选条件的数量
         int filterCount = 0, sortCount = 0;
         for (String s : formattedMap.keySet()) {
@@ -109,9 +113,6 @@ public class ServiceApi {
                 case "city":
                 case "exp":
                 case "degree":
-                case "posDomain":
-                case "enterScale":
-                case "posSource":
                     // 城市、经验、学历要求、岗位领域、企业规模、数据来源按照keyword查询
                     if (!formattedMap.get(s).equals("") && !formattedMap.get(s).equals("不限")) {
                         filterCount++;
@@ -122,17 +123,32 @@ public class ServiceApi {
 
                     // 否则不做任何更改
                     break;
+                case "posDomain":
+                case "enterScale":
+                case "posSource":
+                    // 城市、经验、学历要求、岗位领域、企业规模、数据来源按照keyword查询
+                    if (!formattedMap.get(s).equals("") && !formattedMap.get(s).equals("不限")) {
+                        filterCount++;
+                        String tmpKey = ServiceApi.keymapping.get(s);
+                        System.out.println("筛选条件：" + s + "值为：" + formattedMap.get(s));
+                        // Todo:这里不知道为啥创建以后都是text类型，只有keyword属性才是keyword
+                        multiBoolBuilder.must(QueryBuilders.termQuery(tmpKey + ".keyword", formattedMap.get(s)));
+                    }
+                    break;
                 case "salaryStr":
                     if (salaryLow != 0 || salaryHigh != 0) filterCount++;
                     // 需要查询一定的范围，默认为0，所以只要参数里有这个字段，就肯定会进行一次查询
                     // 要么是按照薪资范围查询，要么是查询到所有的数据
                     System.out.println("筛选条件：" + s + "值为：" + formattedMap.get(s) + "薪资上限：" + salaryHigh + "薪资下限：" + salaryLow);
                     if ((salaryLow == 0) && (salaryHigh == 0)) {
-                        // 这个写法不professional吧
+                        // Todo:这个写法不professional吧
                         multiBoolBuilder.must(QueryBuilders.matchAllQuery());
                     } else if (salaryHigh == 0) {
-                        // 只有一个为0，就是下限
+                        // 20k以上
                         multiBoolBuilder.must(QueryBuilders.rangeQuery("salary_low_bound").gte(salaryLow));
+                    } else if (salaryLow == 0) {
+                        // 3k以下
+                        multiBoolBuilder.must(QueryBuilders.rangeQuery("salary_low_bound").lte(salaryHigh));
                     } else {
                         multiBoolBuilder.filter(QueryBuilders.rangeQuery("salary_low_bound").gte(salaryLow));
                         multiBoolBuilder.filter(QueryBuilders.rangeQuery("salary_high_bound").lte(salaryHigh));
@@ -145,7 +161,7 @@ public class ServiceApi {
         }
 
 
-        // Todo:为builder执行查询????保证结果里有值
+        // Todo:为builder执行查询是什么意思，同时需要（在薪资判断时）保证结果里有值
         searchSourceBuilder.query(multiBoolBuilder);
         if (!salarySort.equals("no")) {
             System.out.println("需要按照薪资排序：" + salarySort);
@@ -177,6 +193,8 @@ public class ServiceApi {
 
         // 2. 构建查询请求对象，入参为索引
         SearchRequest searchRequest = new SearchRequest(searchIndex);
+        // 设置获取真实的分页数量：
+        searchSourceBuilder.trackTotalHits(false);
         // 3. 向搜索请求对象中配置搜索源
         searchRequest.source(searchSourceBuilder);
         // 4. 执行搜索,向ES发起http请求
@@ -184,6 +202,11 @@ public class ServiceApi {
         List<JSONObject> results = new ArrayList<>();
         if (RestStatus.OK.equals(response.status())) {
             long total = response.getHits().getTotalHits().value; //检索到符合条件的总数
+            System.out.println("totalHits:" + total);
+            // 是不是可以在分类之前就获得这个size?
+            JSONObject tmpTotal = new JSONObject();
+            tmpTotal.put("total", total);
+            results.add(tmpTotal);
 
             SearchHit[] hits = response.getHits().getHits();
             // 未指定size，默认查询的是10条
@@ -193,8 +216,8 @@ public class ServiceApi {
                 jsonObject.put("id", id);
                 results.add(jsonObject);
             }
-            if (results.size() == 0) {
-                return ResponseResult.FAILED("results.size()==0, 搜索无结果");
+            if (results.size() == 1) {
+                return ResponseResult.FAILED("results.size()==0, 搜索无结果：total=0");
             }
             return ResponseResult.SUCCESS("搜索结果").setData(results);
         } else
