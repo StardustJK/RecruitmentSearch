@@ -1,6 +1,7 @@
 package com.bupt.recruitmentsearch;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.bupt.recruitmentsearch.response.ResponseResult;
 import org.elasticsearch.action.search.SearchRequest;
@@ -91,7 +92,7 @@ public class ServiceApi {
 
 
         // 1. 构建查询源构建器
-        String searchIndex = "job_info_t_v3";
+        String searchIndex = "job_info_full";
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         // 构建查询语句
         BoolQueryBuilder multiBoolBuilder = QueryBuilders.boolQuery();
@@ -118,12 +119,15 @@ public class ServiceApi {
                         filterCount++;
                         System.out.println("筛选条件：" + s + "值为：" + formattedMap.get(s));
                         // Todo:这里不知道为啥创建以后都是text类型，只有keyword属性才是keyword
-                        multiBoolBuilder.must(QueryBuilders.termQuery(s + ".keyword", formattedMap.get(s)));
-                    }
+                        // 如果库是job_info_full，就是说从控制台创建的库，那么不需要加keyword
+                        multiBoolBuilder.must(QueryBuilders.termQuery(s, formattedMap.get(s)));
 
+                    }
                     // 否则不做任何更改
                     break;
+
                 case "posDomain":
+                    // 在新的库里这些都是keyword
                 case "enterScale":
                 case "posSource":
                     // 城市、经验、学历要求、岗位领域、企业规模、数据来源按照keyword查询
@@ -132,7 +136,11 @@ public class ServiceApi {
                         String tmpKey = ServiceApi.keymapping.get(s);
                         System.out.println("筛选条件：" + s + "值为：" + formattedMap.get(s));
                         // Todo:这里不知道为啥创建以后都是text类型，只有keyword属性才是keyword
-                        multiBoolBuilder.must(QueryBuilders.termQuery(tmpKey + ".keyword", formattedMap.get(s)));
+                        if (tmpKey.equals("pos_domain")) {
+                            multiBoolBuilder.must(QueryBuilders.matchQuery(tmpKey, formattedMap.get(s)));
+                        } else {
+                            multiBoolBuilder.must(QueryBuilders.termQuery(tmpKey, formattedMap.get(s)));
+                        }
                     }
                     break;
                 case "salaryStr":
@@ -214,6 +222,35 @@ public class ServiceApi {
                 String id = hit.getId(); //文档id
                 JSONObject jsonObject = JSON.parseObject(hit.getSourceAsString(), JSONObject.class); // 文档内容
                 jsonObject.put("id", id);
+
+                // 处理：将数组转换为字符串返回
+                Object targetObj = jsonObject.get("pos_name");
+                Object posKeywordObj = jsonObject.get("pos_keyword");
+                String pos_name = "", pos_keyword_total = "";
+                if (targetObj instanceof JSONArray) {
+                    pos_name = (String) ((JSONArray) targetObj).get(0);
+                    jsonObject.remove("pos_name");
+                    System.out.println("JSONArray 数组, pos_name:" + pos_name);
+                    jsonObject.put("pos_name", pos_name);
+                } else if (targetObj instanceof JSONObject) {
+                    System.out.println("JSONObject 对象, 不需要改变, pos_name:" + pos_name);
+                }
+
+                if (posKeywordObj instanceof JSONArray) {
+                    // 直接toString不好使，会带有逗号和换行符，欸我去了不就行吗哈哈哈晕
+                    pos_keyword_total = posKeywordObj.toString();
+                    jsonObject.remove("pos_keyword");
+                    pos_keyword_total = pos_keyword_total.replace("\"", "");
+                    pos_keyword_total = pos_keyword_total.replace(",", " ");
+                    pos_keyword_total = pos_keyword_total.substring(1, pos_keyword_total.length() - 1);
+                    System.out.println("JSONArray 数组, pos_keyword_total:" + pos_keyword_total);
+                    jsonObject.put("pos_keyword", pos_keyword_total);
+                } else if (targetObj instanceof JSONObject) {
+                    System.out.println("JSONObject 对象, 不需要改变, pos_keyword:" + pos_keyword_total);
+                }
+
+//                if posKeyword
+
                 results.add(jsonObject);
             }
             if (results.size() == 1) {
