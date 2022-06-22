@@ -161,6 +161,12 @@ public class ServiceApi {
                     }
                     break;
                 case "salarySort":
+                    // 过滤面议的工资
+                    if (salarySort.equals("asc")) {
+                        System.out.println("升序，升序时不显示面议的薪资");
+                        multiBoolBuilder.must(QueryBuilders.rangeQuery("salary_low_bound").gt(0))
+                                .must(QueryBuilders.rangeQuery("salary_high_bound").gt(0));
+                    }
                     break;
                 case "scaleSort":
                     if (scaleSort.equals("asc")) {
