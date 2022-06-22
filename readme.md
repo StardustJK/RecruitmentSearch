@@ -15,3 +15,4 @@ v1.1
 2. 部署后访问后端服务器**【见内部开发文档】**
 3. 执行RecruitmentsearchApplicationTests中的test()返回”58*“前缀下的所有索引，需要连接校园网。 
 4. es操作参考https://blog.csdn.net/qq_41203483/article/details/121560366
+
