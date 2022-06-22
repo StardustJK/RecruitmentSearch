@@ -120,14 +120,13 @@ public class ServiceApi {
                         System.out.println("筛选条件：" + s + "值为：" + formattedMap.get(s));
                         // Todo:这里不知道为啥创建以后都是text类型，只有keyword属性才是keyword
                         // 如果库是job_info_full，就是说从控制台创建的库，那么不需要加keyword
-                        multiBoolBuilder.must(QueryBuilders.termQuery(s, formattedMap.get(s)));
-
+                        multiBoolBuilder.must(QueryBuilders.termQuery(s+".keyword", formattedMap.get(s)));
                     }
                     // 否则不做任何更改
                     break;
 
+                // 用于筛选的时候都是keyword
                 case "posDomain":
-                    // 在新的库里这些都是keyword
                 case "enterScale":
                 case "posSource":
                     // 城市、经验、学历要求、岗位领域、企业规模、数据来源按照keyword查询
@@ -135,12 +134,13 @@ public class ServiceApi {
                         filterCount++;
                         String tmpKey = ServiceApi.keymapping.get(s);
                         System.out.println("筛选条件：" + s + "值为：" + formattedMap.get(s));
-                        // Todo:这里不知道为啥创建以后都是text类型，只有keyword属性才是keyword
-                        if (tmpKey.equals("pos_domain")) {
-                            multiBoolBuilder.must(QueryBuilders.matchQuery(tmpKey, formattedMap.get(s)));
-                        } else {
-                            multiBoolBuilder.must(QueryBuilders.termQuery(tmpKey, formattedMap.get(s)));
-                        }
+//                        // Todo:这里不知道为啥创建以后都是text类型，只有keyword属性才是keyword
+                        multiBoolBuilder.must(QueryBuilders.termQuery(tmpKey + ".keyword", formattedMap.get(s)));
+//                        if (tmpKey.equals("pos_domain")) {
+//                            multiBoolBuilder.must(QueryBuilders.termQuery(tmpKey+".keyword", formattedMap.get(s)));
+//                        } else {
+//                            multiBoolBuilder.must(QueryBuilders.termQuery(tmpKey, formattedMap.get(s)));
+//                        }
                     }
                     break;
                 case "salaryStr":
