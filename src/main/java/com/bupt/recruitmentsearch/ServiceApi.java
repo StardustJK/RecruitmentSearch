@@ -13,6 +13,7 @@ import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.elasticsearch.search.collapse.CollapseBuilder;
 import org.elasticsearch.search.sort.SortOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -84,11 +85,6 @@ public class ServiceApi {
 
         String salarySort = formattedMap.get("salarySort");
         String scaleSort = formattedMap.get("scaleSort");
-//        String exp = formattedMap.get("exp");
-//        String degree = formattedMap.get("degree");
-//        String posDomain = formattedMap.get("posDomain");
-//        String enterScale = formattedMap.get("enterScale");
-//        String posSource = formattedMap.get("posSource");
 
 
         // 1. 构建查询源构建器
@@ -96,6 +92,8 @@ public class ServiceApi {
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         // 构建查询语句
         BoolQueryBuilder multiBoolBuilder = QueryBuilders.boolQuery();
+        // 去重查询
+//        CollapseBuilder collapseBuilder = new CollapseBuilder("pos_name.keyword");
 
 
         // 筛选条件的数量
@@ -120,7 +118,7 @@ public class ServiceApi {
                         System.out.println("筛选条件：" + s + "值为：" + formattedMap.get(s));
                         // Todo:这里不知道为啥创建以后都是text类型，只有keyword属性才是keyword
                         // 如果库是job_info_full，就是说从控制台创建的库，那么不需要加keyword
-                        multiBoolBuilder.must(QueryBuilders.termQuery(s+".keyword", formattedMap.get(s)));
+                        multiBoolBuilder.must(QueryBuilders.termQuery(s + ".keyword", formattedMap.get(s)));
                     }
                     // 否则不做任何更改
                     break;
@@ -163,7 +161,12 @@ public class ServiceApi {
                     }
                     break;
                 case "salarySort":
+                    break;
                 case "scaleSort":
+                    if (scaleSort.equals("asc")) {
+                        // 升序中需要先删除带有"其他"类型的企业
+                        multiBoolBuilder.must(QueryBuilders.rangeQuery("scale_mapping").gt(0));
+                    }
                     break;
             }
         }
@@ -248,8 +251,6 @@ public class ServiceApi {
                 } else if (targetObj instanceof JSONObject) {
                     System.out.println("JSONObject 对象, 不需要改变, pos_keyword:" + pos_keyword_total);
                 }
-
-//                if posKeyword
 
                 results.add(jsonObject);
             }
